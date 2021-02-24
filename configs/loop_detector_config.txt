@@ -1,0 +1,5 @@
+distance_thresh = 30.0
+accum_distance_thresh = 25.0
+distance_from_last_edge_thresh = 15.0
+fitness_score_max_range = 1000.0
+fitness_score_thresh = 2.5

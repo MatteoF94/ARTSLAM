@@ -1,0 +1,11 @@
+downsample_method = NONE
+downsample_resolution = 0.1
+keyframe_delta_trans = 5
+keyframe_delta_angle = 2
+keyframe_delta_time = 1.0
+transform_thresholding = false
+max_acceptable_trans = 1.0
+max_acceptable_angle = 1.0
+num_frames_to_skip = 1
+prior_odom_delta_trans = 4
+prior_odom_delta_angle = 1.5
