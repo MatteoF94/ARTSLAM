@@ -1,0 +1,150 @@
+{
+  "slam_paths":
+  {
+    "pointclouds" : "/home/matteo/Datasets/2011_09_30/2011_09_30_drive_0027_sync/velodyne_points/data/",
+    "pointclouds_timestamps" : "/home/matteo/Datasets/2011_09_30/2011_09_30_drive_0027_sync/velodyne_points/timestamps.txt",
+    "imu" : "/home/matteo/Datasets/2011_09_30/2011_09_30_drive_0027_sync/oxts/data/",
+    "imu_timestamps" : "/home/matteo/Datasets/2011_09_30/2011_09_30_drive_0027_sync/oxts/timestamps.txt",
+    "gps" : "/home/matteo/Datasets/2011_09_30/2011_09_30_drive_0027_sync/oxts/data/",
+    "gps_timestamps" : "/home/matteo/Datasets/2011_09_30/2011_09_30_drive_0027_sync/oxts/timestamps.txt"
+  },
+
+  "prefilterer":
+  {
+    "downsample_method" : "VOXELGRID",
+    "downsample_resolution" : 0.2,
+    "sample_size" : 20000,
+    "outlier_removal_method" : "RADIUS",
+    "statistical_mean_k" : 10,
+    "statistical_stddev" : 1.0,
+    "radius_radius" : 0.4,
+    "radius_min_neighbours" : 2,
+    "use_distance_filter" : true,
+    "distance_near_threshold" : 1.5,
+    "distance_far_threshold" : 80.0,
+    "scan_period" : 0.1,
+    "imu_to_lidar_rotation" : [9.999976e-01, 7.553071e-04, -2.035826e-03, -7.854027e-04, 9.998898e-01, -1.482298e-02, 2.024406e-03, 1.482454e-02, 9.998881e-01],
+    "verbose" : false
+  },
+
+  "tracker":
+  {
+    "keyframe_delta_trans" : 2.0,
+    "keyframe_delta_angle" : 1.0,
+    "keyframe_delta_time" : 1000000000,
+    "transform_thresholding" : false,
+    "max_acceptable_trans" : 1.0,
+    "max_acceptable_angle" : 0.5,
+    "use_height_filter" : true,
+    "filter_axis" : "z",
+    "min_height" : -1.6,
+    "use_prior_odometry" : false,
+    "prior_odometry_delta_trans" : 0.5,
+    "prior_odometry_delta_angle" : 0.5,
+    "max_odometry_delta_time" : 100000000,
+    "initial_orientation" : [1.0, 0.0, 0.0, 0.0],
+    "initial_translation" : [0.0, 0.0, 0.0],
+    "utm_compensated" : false,
+    "verbose" : false
+  },
+
+  "registration_tracker": {
+    "registration_method_name" : "FAST_GICP",
+    "registration_num_threads" : 0,
+    "registration_transform_epsilon" : 0.01,
+    "registration_max_iterations" : 64,
+    "registration_max_corr_distance" : 2.0,
+    "registration_corr_randomness" : 20,
+    "registration_resolution" : 1.0,
+    "registration_use_reciprocal_corr" : false,
+    "registration_max_optimizer_iterations" : 20,
+    "registration_nn_search_method" : "DIRECT7",
+    "ndt_resolution" : 0.5,
+    "verbose" : true
+  },
+
+  "ground_detector": {
+    "tilt_angle" : 0.0,
+    "sensor_height" : 1.6,
+    "clipping_range" : 0.5,
+    "floor_points_threshold" : 512,
+    "use_normal_filtering" : true,
+    "normal_filtering_threshold" : 10.0,
+    "rough_ground_check" : false,
+    "rough_ground_max_dist" : 3.0,
+    "verbose" : false
+  },
+
+  "loop_detector": {
+    "distance_threshold" : 30.0,
+    "accumulated_distance_threshold" : 45.0,
+    "distance_from_last_edge_threshold" : 5.0,
+    "use_scan_context" : true,
+    "best_k_contexts" : 2,
+    "fitness_score_max_range" : 100000.0,
+    "fitness_score_threshold" : 2.0,
+    "verbose" : true
+  },
+
+  "registration_loop_detector": {
+    "registration_method_name" : "FAST_GICP",
+    "registration_num_threads" : 0,
+    "registration_transform_epsilon" : 0.1,
+    "registration_max_iterations" : 64,
+    "registration_max_corr_distance" : 5.0,
+    "registration_corr_randomness" : 20,
+    "registration_resolution" : 1.0,
+    "registration_use_reciprocal_corr" : false,
+    "registration_max_optimizer_iterations" : 20,
+    "registration_nn_search_method" : "DIRECT7",
+    "ndt_resolution" : 0.5,
+    "verbose" : true
+  },
+
+  "information_matrix_calculator": {
+    "constant_information_matrix" : false,
+    "translation_constant_stddev" : 0.5,
+    "rotation_constant_stddev" : 0.1,
+    "variance_gain" : 20.0,
+    "minimum_translation_stddev" : 0.1,
+    "maximum_translation_stddev" : 5.0,
+    "minimum_rotation_stddev" : 0.05,
+    "maximum_rotation_stddev" : 0.2,
+    "fitness_score_threshold" : 2.5,
+    "verbose" : false
+  },
+
+  "backend_handler": {
+    "use_anchor_graph_node" : true,
+    "anchor_graph_node_stddev" : [-1.0,-1.0,-1.0,-1.0,-1.0,-1.0],
+    "fix_first_graph_node" : false,
+    "first_graph_node_adaptive" : true,
+    "odometry_edge_robust_kernel" : "NONE",
+    "odometry_edge_robust_kernel_size" : 1.0,
+    "floor_edge_stddev" : 10.0,
+    "floor_edge_robust_kernel" : "NONE",
+    "floor_edge_robust_kernel_size" : 1.0,
+    "imu_acceleration_enabled" : false,
+    "imu_orientation_enabled" : false,
+    "imu_to_lidar_rotation" : [9.999976e-01, 7.553071e-04, -2.035826e-03, -7.854027e-04, 9.998898e-01, -1.482298e-02, 2.024406e-03, 1.482454e-02, 9.998881e-01],
+    "imu_acceleration_stddev" : 1.0,
+    "imu_orientation_stddev" : 1.0,
+    "imu_acceleration_edge_robust_kernel" : "NONE",
+    "imu_acceleration_edge_robust_kernel_size" : 1.0,
+    "imu_orientation_edge_robust_kernel" : "NONE",
+    "imu_orientation_edge_robust_kernel_size" : 1.0,
+    "gnss_enabled" : true,
+    "gnss_to_lidar_translation" : [-0.8086759, 0.3195559, -0.7997231],
+    "gnss_edge_xy_stddev" : 10.0,
+    "gnss_edge_z_stddev" : 5.0,
+    "gnss_edge_robust_kernel" : "NONE",
+    "gnss_edge_robust_kernel_size" : 1.0,
+    "loop_edge_robust_kernel" : "Huber",
+    "loop_edge_robust_kernel_size" : 1.0,
+    "optimizer_iterations" : 512,
+    "maximum_unoptimized_keyframes" : 2,
+    "max_keyframes_per_update" : 10,
+    "send_to_observers" : true,
+    "verbose" : false
+  }
+}
