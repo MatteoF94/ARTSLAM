@@ -203,6 +203,8 @@ namespace artslam::laser3d {
         config.maximum_rotation_stddev_ = root.get<double>("information_matrix_calculator.maximum_rotation_stddev");
         config.fitness_score_threshold_ = root.get<double>("information_matrix_calculator.fitness_score_threshold");
         config.verbose_ = root.get<bool>("information_matrix_calculator.verbose");
+
+        return config;
     }
 
     BackendHandler::Configuration parse_backend_handler_configuration(const std::string& filename) {

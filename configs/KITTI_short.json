@@ -144,7 +144,7 @@
     "optimizer_iterations" : 512,
     "maximum_unoptimized_keyframes" : 2,
     "max_keyframes_per_update" : 10,
-    "send_to_observers" : true,
+    "send_to_observers" : false,
     "verbose" : false
   }
 }
