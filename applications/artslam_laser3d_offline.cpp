@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
     }
 
     // perform SLAM, playing back
-    for(int i = 0; i < 200; i++) {
+    for(int i = 0; i < pointclouds_filepaths.size(); i++) {
         pcl::PointCloud<Point3I>::Ptr pointcloud = kitti_reader.read_pointcloud(pointclouds_filepaths[i]);
         pointcloud->header.frame_id = "";
         pointcloud->header.seq = i;
