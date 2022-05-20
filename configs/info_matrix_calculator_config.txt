@@ -1,9 +1,0 @@
-use_const_info_matrix = false
-const_stddev_x = 0.5
-const_stddev_q = 0.1
-var_gain_a = 20.0
-min_stddev_x = 0.1
-max_stddev_x = 5.0
-min_stddev_q = 0.05
-max_stddev_q = 0.2
-fitness_score_thresh = 0.5

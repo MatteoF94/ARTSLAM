@@ -1,7 +1,0 @@
-tilt_deg = 0.0
-sensor_height = 2.0
-height_clip_range = 1.0
-floor_pts_thresh = 512
-floor_normal_thresh = 10.0
-use_normal_filtering = true
-normal_filter_thresh = 20.0
