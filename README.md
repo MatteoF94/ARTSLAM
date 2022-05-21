@@ -35,4 +35,4 @@ Alternatively to catkin_make, you can use the "catkin build artslam_laser_3d" ap
 The file applications/artslam_laser3d_offline.cpp describes in detail how to build your own SLAM system, step by step. Two configuration files are also included to work on the KITTI dataset. There are plenty of parameters, but the majority does not need to be tuned. If you are interested in the use of each parameter, you can check the corresponding header (e.g., tracker --> tracker.h), where they are briefly explained. 
 
 ## Papers
-Frosi, Matteo, and Matteo Matteucci. "ART-SLAM: Accurate Real-Time 6DoF LiDAR SLAM." IEEE Robotics and Automation Letters (2022). [[link]](https://ieeexplore.ieee.org/abstract/document/9691876).
+Frosi Matteo, and Matteo Matteucci. "ART-SLAM: Accurate Real-Time 6DoF LiDAR SLAM." IEEE Robotics and Automation Letters (2022). [[link]](https://ieeexplore.ieee.org/abstract/document/9691876).
