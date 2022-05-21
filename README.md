@@ -1,10 +1,10 @@
 # ARTSLAM
-***artslam*** is an open source c++ package for accurate real-time 6DoF SLAM, using a 3D LIDAR. It works on full point clouds and it is a graph-based system. Tracking is achieved using scan-to-keyframe matching, where keyframes correspond to point clouds taken after a certain distance is traveled. Loop detection involves three steps: range based filtering, Scan Context and keyframe-to-keyframe alignment. ART-SLAM also supports several graph constraints, such as floor/ground coefficients, IMU orientation and GNSS data.
+***artslam_laser_3d*** is an open source c++ package for accurate real-time 6DoF SLAM, using a 3D LIDAR. It works on full point clouds and it is a graph-based system. Tracking is achieved using scan-to-keyframe matching, where keyframes correspond to point clouds taken after a certain distance is traveled. Loop detection involves three steps: range based filtering, Scan Context and keyframe-to-keyframe alignment. ART-SLAM also supports several graph constraints, such as floor/ground coefficients, IMU orientation and GNSS data.
 
 A basic ROS wrapper is provided at [[link]](https://github.com/MatteoF94/ARTSLAM_WRAPPER).
 
 ## Requirements
-***artslam*** requires the following libraries:
+***artslam_laser_3d*** requires the following libraries:
 
 - Eigen3
 - Boost > 1.65.1
@@ -20,7 +20,7 @@ Moreover, it requires the following packages:
 - [artslam_core](https://github.com/MatteoF94/ARTSLAM_CORE)
 
 ## Build
-***artslam*** is built using catkin, although ROS is not mandatory:
+***artslam_laser_3d*** is built using catkin, although ROS is not mandatory:
 ```bash
 cd catkin_ws/src
 git clone https://github.com/koide3/ndt_omp.git
