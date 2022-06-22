@@ -31,15 +31,13 @@ namespace artslam::laser3d {
 
         config.downsample_method_ = root.get<std::string>("prefilterer.downsample_method");
         config.downsample_resolution_ = root.get<float>("prefilterer.downsample_resolution");
-        config.sample_size_ = root.get<int>("prefilterer.sample_size");
         config.outlier_removal_method_ = root.get<std::string>("prefilterer.outlier_removal_method");
-        config.statistical_mean_k_ = root.get<int>("prefilterer.statistical_mean_k");
-        config.statistical_stddev_ = root.get<float>("prefilterer.statistical_stddev");
         config.radius_radius_ = root.get<float>("prefilterer.radius_radius");
         config.radius_min_neighbours_ = root.get<int>("prefilterer.radius_min_neighbours");
-        config.use_distance_filter_ = root.get<bool>("prefilterer.use_distance_filter");
+        config.enable_distance_filter_ = root.get<bool>("prefilterer.use_distance_filter");
         config.distance_near_threshold_ = root.get<float>("prefilterer.distance_near_threshold");
         config.distance_far_threshold_ = root.get<float>("prefilterer.distance_far_threshold");
+        config.enable_deskewing_ = root.get<bool>("prefilterer.enable_deskewing");
         config.scan_period_ = root.get<float>("prefilterer.scan_period");
         int i = 0;
         for(boost::property_tree::ptree::value_type &val : root.get_child("prefilterer.imu_to_lidar_rotation")) {
@@ -63,9 +61,6 @@ namespace artslam::laser3d {
         config.keyframe_delta_trans_ = root.get<double>("tracker.keyframe_delta_trans");
         config.keyframe_delta_angle_ = root.get<double>("tracker.keyframe_delta_angle");
         config.keyframe_delta_time_ =  root.get<uint64_t>("tracker.keyframe_delta_time");
-        config.transform_thresholding_ = root.get<bool>("tracker.transform_thresholding");
-        config.max_acceptable_trans_ = root.get<double>("tracker.max_acceptable_trans");
-        config.max_acceptable_angle_ = root.get<double>("tracker.max_acceptable_angle");
         config.use_height_filter_ = root.get<bool>("tracker.use_height_filter");
         config.filter_axis_ = root.get<std::string>("tracker.filter_axis");
         config.min_height_ = root.get<float>("tracker.min_height");

@@ -19,15 +19,13 @@ namespace artslam::laser3d {
         struct Configuration {
             std::string downsample_method_ = "VOXELGRID";
             float downsample_resolution_ = 0.2;
-            int sample_size_ = 30000;
             std::string outlier_removal_method_ = "RADIUS";
-            int statistical_mean_k_ = 20;
-            float statistical_stddev_ = 1.0;
             float radius_radius_ = 0.8;
             int radius_min_neighbours_ = 2;
-            bool use_distance_filter_ = true;
+            bool enable_distance_filter_ = true;
             float distance_near_threshold_ = 1.0;
             float distance_far_threshold_ = 100.0;
+            bool enable_deskewing_ = false;
             float scan_period_ = 0.1;
             double imu_to_lidar_rotation_[9] = {9.999976e-01, 7.553071e-04, -2.035826e-03, -7.854027e-04, 9.998898e-01, -1.482298e-02, 2.024406e-03, 1.482454e-02, 9.998881e-01};
             bool verbose_ = true;
@@ -60,10 +58,10 @@ namespace artslam::laser3d {
 
     private:
         // Configures the downsampling method used to filter point clouds
-        void configure_downsampler(const std::string& method, float downsample_resolution, int sample_size);
+        void configure_downsampler(const std::string& method, float downsample_resolution);
 
         // Configures the outlier removal method used to filter point clouds
-        void configure_outlier_remover(const std::string& method, int mean_k, double stddev, double radius, int min_neighbours);
+        void configure_outlier_remover(const std::string& method, double radius, int min_neighbours);
 
         // Filters and adjusts a point cloud
         void filter_pointcloud(const pcl::PointCloud<Point3I>::ConstPtr& pointcloud);

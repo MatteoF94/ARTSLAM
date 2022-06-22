@@ -239,6 +239,8 @@ void BackendHandler::reinforce_and_optimize() {
     total_time_ += duration.count();
     count_++;
 
+    //std::cout << "VERT EDGE - " << graph_handler_->num_vertices() << " " << graph_handler_->num_edges() << "\n";
+
     if(configuration_.send_to_observers_) {
         prepare_data_for_visualization();
     }
@@ -618,7 +620,7 @@ bool BackendHandler::save_results(const std::string& results_path) {
     map->is_dense = false;
 
     pcl::VoxelGrid<Point3I> downsample_filter;
-    downsample_filter.setLeafSize(0.2,0.2,0.2);
+    downsample_filter.setLeafSize(0.1,0.1,0.1);
     downsample_filter.setInputCloud(map);
     pcl::PointCloud<Point3I>::Ptr filtered_map(new pcl::PointCloud<Point3I>());
     downsample_filter.filter(*filtered_map);
@@ -642,6 +644,11 @@ void BackendHandler::prepare_data_for_visualization() {
     for(const KeyframeLaser3D::Ptr& keyframe : keyframes_) {
         EigIsometry3d pose = keyframe->graph_node_->estimate();
         poses.push_back(pose);
+    }
+
+    /*for(const KeyframeLaser3D::Ptr& keyframe : keyframes_) {
+        EigIsometry3d pose = keyframe->graph_node_->estimate();
+        poses.push_back(pose);
         EigMatrix4d posem = pose.matrix();
         pcl::PointCloud<Point3I>::Ptr transformed_pointcloud(new pcl::PointCloud<Point3I>());
         pcl::transformPointCloud(*(keyframe->pointcloud_), *transformed_pointcloud, posem);
@@ -653,6 +660,15 @@ void BackendHandler::prepare_data_for_visualization() {
         filter.setLeafSize(0.4, 0.4, 0.4);
         filter.setInputCloud(map);
         filter.filter(*map);
+        notify_slam_output_observers(map, poses);
+    }*/
+
+    if(!keyframes_.empty()) {
+        EigIsometry3d pose = keyframes_.back()->graph_node_->estimate();
+        EigMatrix4d posem = pose.matrix();
+        pcl::PointCloud<Point3I>::Ptr transformed_pointcloud(new pcl::PointCloud<Point3I>());
+        pcl::transformPointCloud(*(keyframes_.back()->pointcloud_), *transformed_pointcloud, posem);
+        *map += *transformed_pointcloud;
         notify_slam_output_observers(map, poses);
     }
 }

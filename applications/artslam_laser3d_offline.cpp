@@ -29,7 +29,7 @@ void get_filepaths(const std::string& path, const std::string& extension, std::v
 }
 
 int main(int argc, char** argv) {
-    std::string config_file = "/home/matteo/catkin_ws/src/artslam_laser_3d/configs/KITTI_long.json";
+    std::string config_file = "/home/matteo/catkin_ws/src/artslam_laser_3d/configs/KITTI_short.json";
     std::string save_path = "/home/matteo/results/";
     std::vector<std::string> slam_paths = parse_slam_paths(config_file);
 

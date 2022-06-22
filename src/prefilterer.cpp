@@ -22,8 +22,8 @@ Prefilterer::Prefilterer() {
         msg.str("");
     }
 
-    configure_downsampler(configuration_.downsample_method_, configuration_.downsample_resolution_, configuration_.sample_size_);
-    configure_outlier_remover(configuration_.outlier_removal_method_, configuration_.statistical_mean_k_, configuration_.statistical_stddev_, configuration_.radius_radius_, configuration_.radius_min_neighbours_);
+    configure_downsampler(configuration_.downsample_method_, configuration_.downsample_resolution_);
+    configure_outlier_remover(configuration_.outlier_removal_method_, configuration_.radius_radius_, configuration_.radius_min_neighbours_);
 
     prefilterer_dispatcher_ = std::make_unique<Dispatcher>("PrefiltererDispatcher", 1);
 
@@ -45,21 +45,19 @@ Prefilterer::Prefilterer(const Configuration& configuration) {
 
     configuration_.downsample_method_ = configuration.downsample_method_;
     configuration_.downsample_resolution_ = configuration.downsample_resolution_;
-    configuration_.sample_size_ = configuration.sample_size_;
     configuration_.outlier_removal_method_ = configuration.outlier_removal_method_;
-    configuration_.statistical_mean_k_ = configuration.statistical_mean_k_;
-    configuration_.statistical_stddev_ = configuration.statistical_stddev_;
     configuration_.radius_radius_ = configuration.radius_radius_;
     configuration_.radius_min_neighbours_ = configuration.radius_min_neighbours_;
-    configuration_.use_distance_filter_ = configuration.use_distance_filter_;
+    configuration_.enable_distance_filter_ = configuration.enable_distance_filter_;
     configuration_.distance_near_threshold_ = configuration.distance_near_threshold_;
     configuration_.distance_far_threshold_ = configuration.distance_far_threshold_;
+    configuration_.enable_deskewing_ = configuration.enable_deskewing_;
     configuration_.scan_period_ = configuration.scan_period_;
     for(int i = 0; i < 9; i++)
         configuration_.imu_to_lidar_rotation_[i] = configuration.imu_to_lidar_rotation_[i];
 
-    configure_downsampler(configuration_.downsample_method_, configuration_.downsample_resolution_, configuration_.sample_size_);
-    configure_outlier_remover(configuration_.outlier_removal_method_, configuration_.statistical_mean_k_, configuration_.statistical_stddev_, configuration_.radius_radius_, configuration_.radius_min_neighbours_);
+    configure_downsampler(configuration_.downsample_method_, configuration_.downsample_resolution_);
+    configure_outlier_remover(configuration_.outlier_removal_method_, configuration_.radius_radius_, configuration_.radius_min_neighbours_);
 
     prefilterer_dispatcher_ = std::make_unique<Dispatcher>("PrefiltererDispatcher", 1);
 
@@ -74,7 +72,7 @@ Prefilterer::Prefilterer(const Configuration& configuration) {
 Prefilterer::~Prefilterer() = default;
 
 // Configures the downsampling method used to filter point clouds
-void Prefilterer::configure_downsampler(const std::string& method, float downsample_resolution, int sample_size) {
+void Prefilterer::configure_downsampler(const std::string& method, float downsample_resolution) {
     std::stringstream msg;
 
     if(method == "VOXELGRID") {
@@ -92,11 +90,6 @@ void Prefilterer::configure_downsampler(const std::string& method, float downsam
         pcl::UniformSampling<Point3I>::Ptr uniform_sampling(new pcl::UniformSampling<Point3I>());
         uniform_sampling->setRadiusSearch(downsample_resolution);
         downsample_filter_ = uniform_sampling;
-    } else if(method == "RANDOM") {
-        msg << "[Prefilterer] Downsampling with RANDOM method, sample size: " << sample_size << "\n";
-        pcl::RandomSample<Point3I>::Ptr random_sample(new pcl::RandomSample<Point3I>());
-        random_sample->setSample(sample_size);
-        downsample_filter_ = random_sample;
     } else {
         msg << "[Prefilterer] Downsampling with invalid or NONE method\n";
     }
@@ -107,18 +100,10 @@ void Prefilterer::configure_downsampler(const std::string& method, float downsam
 }
 
 // Configures the outlier removal method used to filter point clouds
-void Prefilterer::configure_outlier_remover(const std::string& method, int mean_k, double stddev, double radius, int min_neighbours) {
+void Prefilterer::configure_outlier_remover(const std::string& method, double radius, int min_neighbours) {
     std::stringstream msg;
 
-    if(method == "STATISTICAL") {
-        msg << "[Prefilterer] Removing outliers with STATISTICAL method, mean and stddev: " << mean_k << ", " << stddev << "\n";
-        for(int i = 0; i < 4; i++) {
-            pcl::StatisticalOutlierRemoval<Point3I>::Ptr sor(new pcl::StatisticalOutlierRemoval<Point3I>());
-            sor->setMeanK(mean_k);
-            sor->setStddevMulThresh(stddev);
-            outlier_removal_filters_.emplace_back(sor);
-        }
-    } else if(method == "RADIUS") {
+    if(method == "RADIUS") {
         msg << "[Prefilterer] Removing outliers with RADIUS method, radius and min neighbours: " << radius << ", " << min_neighbours << "\n";
         for(int i = 0; i < 4; i++) {
             pcl::RadiusOutlierRemoval<Point3I>::Ptr ror(new pcl::RadiusOutlierRemoval<Point3I>());
@@ -223,7 +208,7 @@ pcl::PointCloud<Point3I>::ConstPtr Prefilterer::deskew(const pcl::PointCloud<Poi
     uint64_t timestamp = pointcloud->header.stamp;
 
     std::unique_lock<std::mutex> imu_lock(insertion_mutex_);
-    if(imu3d_msgs_.empty()) {
+    if(configuration_.enable_deskewing_ || imu3d_msgs_.empty()) {
         // no possible deskew
         // TODO deskew with no IMU, i.e., motion extracted from consecutive point clouds
         if(configuration_.verbose_) {
@@ -303,7 +288,7 @@ pcl::PointCloud<Point3I>::ConstPtr Prefilterer::distance_filter(const pcl::Point
     std::stringstream msg;
 
     // if distance filtering is not enabled, do nothing on the original cloud
-    if(!configuration_.use_distance_filter_) {
+    if(!configuration_.enable_distance_filter_) {
         return pointcloud;
     }
 

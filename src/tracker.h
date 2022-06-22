@@ -21,9 +21,6 @@ namespace artslam::laser3d {
             double keyframe_delta_trans_ = 5.0;         // minimum distance (meters) between keyframes
             double keyframe_delta_angle_ = 1;           // minimum angle (radians) between keyframes
             uint64_t keyframe_delta_time_ = 1e9;        // minimum time (nanoseconds) between keyframes
-            bool transform_thresholding_ = false;       // whether to threshold each consecutive motion
-            double max_acceptable_trans_ = 1.0;         // maximum acceptable translation of the current motion
-            double max_acceptable_angle_ = 0.5;         // maximum acceptable rotation of the current motion
             bool use_height_filter_ = true;             // whether to use a height filter on the input point cloud
             std::string filter_axis_ = "z";             // axis on which filter the height of the input point cloud
             float min_height_ = -1.6;                   // minimum acceptable height (the rest is filtered out)

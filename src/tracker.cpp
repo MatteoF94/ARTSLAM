@@ -37,9 +37,6 @@ Tracker::Tracker(const Configuration &configuration, pcl::Registration<Point3I, 
     configuration_.keyframe_delta_trans_ = configuration.keyframe_delta_trans_;
     configuration_.keyframe_delta_angle_ = configuration.keyframe_delta_angle_;
     configuration_.keyframe_delta_time_ = configuration.keyframe_delta_time_;
-    configuration_.transform_thresholding_ = configuration.transform_thresholding_;
-    configuration_.max_acceptable_trans_ = configuration.max_acceptable_trans_;
-    configuration_.max_acceptable_angle_ = configuration.max_acceptable_angle_;
     configuration_.use_height_filter_ = configuration.use_height_filter_;
     configuration_.filter_axis_ = configuration.filter_axis_;
     configuration_.min_height_ = configuration.min_height_;
@@ -139,7 +136,6 @@ void Tracker::track(const pcl::PointCloud<Point3I>::ConstPtr& pointcloud) {
     filtered_pointcloud->header = pointcloud->header;
 
     Eigen::Matrix4f pose = match(filtered_pointcloud);
-    //std::cout << pose << std::endl;
     if(skip_mode_) {
         if(configuration_.verbose_) {
             msg << "[Tracker] Skipping point cloud received, with (id, timestamp): (" << pointcloud->header.seq << ", " << pointcloud->header.stamp
@@ -253,24 +249,6 @@ EigMatrix4f Tracker::match(const pcl::PointCloud<Point3I>::ConstPtr &pointcloud)
     EigMatrix4f transformation = registration_method_->getFinalTransformation();
     current_fitness_ = registration_method_->getFitnessScore();
     EigMatrix4f odometry = keyframe_pose_ * transformation;
-
-    if(configuration_.transform_thresholding_) {
-        EigMatrix4f delta_transformation = prev_transformation_.inverse() * transformation;
-        double delta_translation = delta_transformation.block<3,1>(0,3).norm();
-        double delta_angle = std::acos(Eigen::Quaternionf(delta_transformation.block<3,3>(0,0)).w());
-
-        if(delta_translation > configuration_.max_acceptable_trans_ || delta_angle > configuration_.max_acceptable_angle_) {
-            if(configuration_.verbose_) {
-                msg << "[Tracker] Transformation of cloud with (id, timestamp): (" << pointcloud->header.seq << ", " << pointcloud->header.stamp
-                    << "), is too large; ignoring this frame\n";
-                std::cout << msg.str();
-                msg.str("");
-            }
-
-            // assumes a constant motion model
-            return keyframe_pose_ * prev_transformation_;
-        }
-    }
 
     prev_transformation_ = transformation;
     return odometry;
