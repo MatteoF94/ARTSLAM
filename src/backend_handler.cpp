@@ -439,6 +439,7 @@ bool BackendHandler::flush_incoming_imu3d_msgs() {
             if(keyframe->orientation_->w() < 0.0) {
                 keyframe->orientation_->coeffs() = -keyframe->orientation_->coeffs();
             }
+            EigQuaterniond odom_quat(keyframe->odometry_.linear());
             Eigen::MatrixXd info = Eigen::MatrixXd::Identity(3, 3) / configuration_.imu_orientation_stddev_;
             g2o::EdgeSE3PriorQuat* edge = graph_handler_->add_se3_prior_quat_edge(keyframe->graph_node_, *keyframe->orientation_, info);
             graph_handler_->add_robust_kernel(edge, configuration_.imu_orientation_edge_robust_kernel_, configuration_.imu_orientation_edge_robust_kernel_size_);
@@ -452,28 +453,28 @@ bool BackendHandler::flush_incoming_imu3d_msgs() {
     return updated;
 }
 
+void BackendHandler::set_gps_to_lidar_translation(EigVector3d g2l_trans) {
+    configuration_.gnss_to_lidar_translation_[0] = g2l_trans.x();
+    configuration_.gnss_to_lidar_translation_[1] = g2l_trans.y();
+    configuration_.gnss_to_lidar_translation_[2] = g2l_trans.z();
+}
+
 bool BackendHandler::flush_incoming_gnss_msgs() {
     std::lock_guard<std::mutex> gnss_lock(gnss_mutex_);
-
     if(keyframes_.empty() || gnss_msgs_.empty() || !configuration_.gnss_enabled_)
         return false;
-
     bool updated = false;
     auto gnss_msg_it = gnss_msgs_.begin();
-
     for(auto& keyframe : keyframes_) {
         uint64_t keyframe_timestamp = keyframe->timestamp_;
-
         // if the keyframe is older than the last GNSS message, stop the data association
         if(keyframe_timestamp > gnss_msgs_.back()->header_.timestamp_ + 10000000) {
             break;
         }
-
         // if the keyframe is newer than the current GNSS message considered, skip this cycle
         if(keyframe_timestamp < (*gnss_msg_it)->header_.timestamp_ - 10000000) {
             continue;
         }
-
         // find the closest GNSS message, in time, to the keyframes
         auto closest_gnss = gnss_msg_it;
         for(auto gnss = gnss_msg_it; gnss != gnss_msgs_.end(); gnss++) {
@@ -482,17 +483,14 @@ bool BackendHandler::flush_incoming_gnss_msgs() {
             if(dt < dt2) {
                 break;
             }
-
             closest_gnss = gnss;
         }
-
         gnss_msg_it = closest_gnss;
         uint64_t dt = ((*closest_gnss)->header_.timestamp_ > keyframe_timestamp) ? ((*closest_gnss)->header_.timestamp_ - keyframe_timestamp) : (keyframe_timestamp - (*closest_gnss)->header_.timestamp_);
         uint64_t limit = 200000000;
         if(dt > limit) {
             continue;
         }
-
         // convert (latitude, longitude, altitude) -> (easting, northing, altitude) in UTM coordinate
         double northing;
         double easting;
@@ -500,71 +498,72 @@ bool BackendHandler::flush_incoming_gnss_msgs() {
         char band;
         TypesConverter::LL_to_UTM((*closest_gnss)->latitude_, (*closest_gnss)->longitude_, northing, easting, zone, band);
         EigVector3d xyz(easting, northing, (*closest_gnss)->altitude_);
+        std::string gpspath= "/home/alessandro/easymile/src/easymile/result/gpsart.csv";
+        std::ofstream gpsfile(gpspath.c_str(), std::ofstream::app);
+        gpsfile << /*"GPS: " << std::setprecision(9) << xyz.transpose() << */ std::setprecision(15) << (*closest_gnss)->latitude_ << " " << (*closest_gnss)->longitude_ << " " << (*closest_gnss)->altitude_ << " " << (*closest_gnss)->header_.timestamp_ << "\n";
         keyframe->gps_utm_coordinates_ = xyz;
-
         if(!keyframe->utm_compensated_ && !keyframe->orientation_)
             continue;
-
         EigVector3d g2l_translation = EigVector3d(configuration_.gnss_to_lidar_translation_[0], configuration_.gnss_to_lidar_translation_[1], configuration_.gnss_to_lidar_translation_[2]);
-
         // if the keyframe has IMU information, use it to estimate the LiDAR position in UTM
         EigVector3d lidar_utm;
         if(keyframe->orientation_) {
-            lidar_utm = xyz + keyframe->orientation_.value() * g2l_translation;
+            lidar_utm = xyz - keyframe->orientation_.value() * g2l_translation;
             keyframe->lidar_utm_coordinates_ = lidar_utm;
         } else {
             // if the keyframe is compensated w.r.t. East and North, use its rotation matrix to estimate the LiDAR position in UTM
             EigMatrix3d rotation = keyframe->odometry_.linear();
             EigQuaterniond quat(rotation);
-            lidar_utm = xyz + quat * g2l_translation;
+            lidar_utm = xyz - quat * g2l_translation;
             keyframe->lidar_utm_coordinates_ = lidar_utm;
         }
-
         // the first GNSS position will be the origin of the map
         if(!first_utm_) {
             first_utm_ = keyframe->lidar_utm_coordinates_;
-
-            //change also anchor node to use this keyframe as map origin
-            // TODO check later
-            /*if (use_anchor_graph_node_) {
-                anchor_graph_edge_->vertices()[1] = keyframe->graph_node_;
-
-                EigIsometry3d relative_position_anchor = EigIsometry3d::Identity();
-                if(keyframe->orientation_) {
-                    EigMatrix3d rotation(keyframe->orientation_.value());
-                    relative_position_anchor.linear() = rotation;
-                } else {
-                    relative_position_anchor.linear() = keyframe->odometry_.linear();
-                }
-                anchor_graph_edge_->setMeasurement(relative_position_anchor);
-            }*/
         }
         lidar_utm -= (*first_utm_);   // convert in ENU coordinates
         // TODO if floor is not used, can use altitude instead
         lidar_utm.z() = 0;    // not really interested in altitude because of the floor coefficients
-
         keyframe->lidar_enu_coordinates_ = lidar_utm;
 
         g2o::OptimizableGraph::Edge* edge;
         if(lidar_utm.z() == 0) {
-            EigMatrix2d information_matrix = EigMatrix2d::Identity() / configuration_.gnss_edge_xy_stddev_;
+            EigMatrix2d information_matrix = EigMatrix2d::Identity();
+            if((*closest_gnss)->covariance_type_ == 0)
+                information_matrix /= configuration_.gnss_edge_xy_stddev_;
+            else {
+                EigMatrix3d covariance_matrix;
+                covariance_matrix << (*closest_gnss)->covariance_[0], (*closest_gnss)->covariance_[1], (*closest_gnss)->covariance_[2],
+                                     (*closest_gnss)->covariance_[3], (*closest_gnss)->covariance_[4], (*closest_gnss)->covariance_[5],
+                                     (*closest_gnss)->covariance_[6], (*closest_gnss)->covariance_[7], (*closest_gnss)->covariance_[8];
+                // TODO not sure if a simple matrix reduction is enough 
+                information_matrix = covariance_matrix.inverse().block<2,2>(0,0);
+            }
+
             edge = graph_handler_->add_se3_prior_xy_edge(keyframe->graph_node_, lidar_utm.head<2>(), information_matrix);
         } else {
             Eigen::Matrix3d information_matrix = Eigen::Matrix3d::Identity();
-            information_matrix.block<2, 2>(0, 0) /= configuration_.gnss_edge_xy_stddev_;
-            information_matrix(2, 2) /= configuration_.gnss_edge_z_stddev_;
+            if((*closest_gnss)->covariance_type_ == 0) {
+                information_matrix.block<2, 2>(0, 0) /= configuration_.gnss_edge_xy_stddev_;
+                information_matrix(2, 2) /= configuration_.gnss_edge_z_stddev_;
+            }
+            else {
+                EigMatrix3d covariance_matrix;
+                covariance_matrix << (*closest_gnss)->covariance_[0], (*closest_gnss)->covariance_[1], (*closest_gnss)->covariance_[2],
+                                     (*closest_gnss)->covariance_[3], (*closest_gnss)->covariance_[4], (*closest_gnss)->covariance_[5],
+                                     (*closest_gnss)->covariance_[6], (*closest_gnss)->covariance_[7], (*closest_gnss)->covariance_[8];
+                information_matrix = covariance_matrix.inverse();
+            }
             edge = graph_handler_->add_se3_prior_xyz_edge(keyframe->graph_node_, lidar_utm, information_matrix);
         }
         graph_handler_->add_robust_kernel(edge, configuration_.gnss_edge_robust_kernel_, configuration_.gnss_edge_robust_kernel_size_);
-
         updated = true;
     }
-
     auto remove_loc = std::upper_bound(gnss_msgs_.begin(), gnss_msgs_.end(), keyframes_.back()->timestamp_, [=](uint64_t timestamp, const GeoPointStamped_MSG::ConstPtr& gnss_msg) { return gnss_msg->header_.timestamp_ > timestamp; });
     gnss_msgs_.erase(gnss_msgs_.begin(), remove_loc);
-
     return updated;
 }
+
 
 bool BackendHandler::detect_loops() {
     std::vector<Loop::Ptr> loops = loop_detector_->detect(keyframes_, new_keyframes_);
@@ -608,7 +607,7 @@ bool BackendHandler::save_results(const std::string& results_path) {
         EigMatrix4d posem = pose.matrix();
         odomoutfile << posem(0,0) << " " << posem(0,1) << " " << posem(0,2) << " " << posem(0,3) << " " <<
                        posem(1,0) << " " << posem(1,1) << " " << posem(1,2) << " " << posem(1,3) << " " <<
-                       posem(2,0) << " " << posem(2,1) << " " << posem(2,2) << " " << posem(2,3) << "\n";
+                       posem(2,0) << " " << posem(2,1) << " " << posem(2,2) << " " << posem(2,3) << " " << keyframe->pointcloud_->header.stamp <<"\n";
 
         pcl::PointCloud<Point3I>::Ptr transformed_pointcloud(new pcl::PointCloud<Point3I>());
         pcl::transformPointCloud(*(keyframe->pointcloud_), *transformed_pointcloud, posem);

@@ -194,8 +194,8 @@ Loop::Ptr LoopDetector::matching(const std::vector<KeyframeLaser3D::Ptr>& candid
         // compute the motion guess, as transformation between the clouds, and perform scan matching
         EigMatrix4f guess = (new_keyframe_estimate.inverse() * candidate_estimate).matrix().cast<float>();
         guess(2, 3) = 0.0;  // set the "Z" component to 0 to have a 2D accurate guess
-        guess(1,3) = 0.0;
-        guess(0,3) = 0.0;
+        //guess(1,3) = 0.0;
+        //guess(0,3) = 0.0;
         registration_method_->align(*aligned_pointcloud, guess);
 
         double score = registration_method_->getFitnessScore(configuration_.fitness_score_max_range_);

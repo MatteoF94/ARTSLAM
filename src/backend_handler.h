@@ -60,6 +60,8 @@ namespace artslam::laser3d {
         // Signals that a new keyframe has been received
         void update_keyframe_observer(const KeyframeLaser3D::Ptr& keyframe) override;
 
+        void set_gps_to_lidar_translation(EigVector3d g2l_trans);
+
         // Signals that a new set of floor coefficients has been received
         void update_floor_coefficients_observer(const FloorCoefficients_MSG::ConstPtr& floor_coefficients_msg) override;
 

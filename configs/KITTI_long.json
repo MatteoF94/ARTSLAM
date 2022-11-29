@@ -21,7 +21,7 @@
     "distance_far_threshold" : 80.0,
     "enable_deskewing" : false,
     "scan_period" : 0.1,
-    "imu_to_lidar_rotation" : [9.999976e-01, 7.553071e-04, -2.035826e-03, -7.854027e-04, 9.998898e-01, -1.482298e-02, 2.024406e-03, 1.482454e-02, 9.998881e-01],
+    "imu_to_lidar_rotation" : [1, 0, 0, 0, 1, 0, 0, 0, 1],
     "verbose" : false
   },
 
@@ -121,7 +121,7 @@
     "floor_edge_robust_kernel_size" : 1.0,
     "imu_acceleration_enabled" : false,
     "imu_orientation_enabled" : false,
-    "imu_to_lidar_rotation" : [9.999976e-01, 7.553071e-04, -2.035826e-03, -7.854027e-04, 9.998898e-01, -1.482298e-02, 2.024406e-03, 1.482454e-02, 9.998881e-01],
+    "imu_to_lidar_rotation" : [1, 0, 0, 0, 1, 0, 0, 0, 1],
     "imu_acceleration_stddev" : 1.0,
     "imu_orientation_stddev" : 1.0,
     "imu_acceleration_edge_robust_kernel" : "NONE",
