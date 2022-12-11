@@ -9,7 +9,7 @@ using namespace artslam::core::types;
 namespace artslam::laser3d {
     class SlamOutputObserver {
     public:
-        virtual void update_slam_output_observer(pcl::PointCloud<Point3I>::Ptr map, std::vector<Eigen::Isometry3d>) = 0;
+        virtual void update_slam_output_observer(pcl::PointCloud<Point3I>::Ptr map, std::vector<Eigen::Isometry3d> poses, OccupancyGrid::Ptr oc) = 0;
     };
 }
 

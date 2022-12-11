@@ -27,7 +27,7 @@
 
   "tracker":
   {
-    "keyframe_delta_trans" : 2.0,
+    "keyframe_delta_trans" : 4.0,
     "keyframe_delta_angle" : 1.0,
     "keyframe_delta_time" : 1000000000,
     "use_height_filter" : true,

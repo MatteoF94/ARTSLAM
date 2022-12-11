@@ -33,6 +33,7 @@ namespace artslam::laser3d {
         // ----------------------------------------------------------------------------------
         EigIsometry3d odometry_;
         pcl::PointCloud<Point3I>::ConstPtr pointcloud_;
+        pcl::PointCloud<Point3I>::Ptr pointcloud_2d_;
         std::optional<EigVector4d> floor_coefficients_;
         std::optional<EigVector3d> lidar_enu_coordinates_;
         std::optional<EigVector3d> lidar_utm_coordinates_;

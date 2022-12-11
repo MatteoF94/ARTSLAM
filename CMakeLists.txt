@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(artslam_laser_3d)
+project(artslam)
 
 # set the default path for built executables to the "bin" directory of the project
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
@@ -51,7 +51,7 @@ include_directories(SYSTEM ${G2O_INCLUDE_DIR} ${G2O_INCLUDE_DIRS})
 
 catkin_package(
   INCLUDE_DIRS src include
-  LIBRARIES artslam_laser_3d
+  LIBRARIES artslam_lib
   CATKIN_DEPENDS artslam_core ndt_omp fast_gicp
 )
 

@@ -49,6 +49,12 @@ namespace artslam::laser3d {
             unsigned short optimizer_iterations_ = 512;         // number of optimizer iterations
             unsigned short maximum_unoptimized_keyframes_ = 2;  // number of keyframes after which to perform optimization
             unsigned short max_keyframes_per_update_ = 10;      // maximum number of processed keyframes per optimization
+
+            float occmap_resolution_ = 0.25;                    // map resolution [m]
+            unsigned int occmap_width_ = 500;                  // map width (number of cells)
+            unsigned int occmap_height_ = 500;                 // map height (number of cells)
+            unsigned int occmap_level_ = 0.0;                   // map level w.r.t. sensor
+
             bool send_to_observers_ = true;                    // whether to build a map and send it to observers
             bool verbose_ = false;                              // whether the class should be verbose
         };
@@ -113,8 +119,6 @@ namespace artslam::laser3d {
 
         bool detect_loops();
 
-        void prepare_data_for_visualization();
-
         Configuration configuration_;
 
         std::deque<KeyframeLaser3D::Ptr> new_keyframes_;
@@ -156,6 +160,17 @@ namespace artslam::laser3d {
         LoopDetector* loop_detector_ = nullptr;
 
         std::vector<SlamOutputObserver*> slam_output_observers_;
+
+        OccupancyGrid::Ptr occupancygrid_;
+        unsigned int occmap_width_;
+        unsigned int occmap_height_;
+        float occmap_bbox_[4] = {0,0,0,0};  // bounding box (x min, x max, y min, y max)
+        bool update_occmap_ = false;
+
+    public:
+        void prepare_data_for_visualization();
+
+        void supercover_line(double x0, double y0, double x1, double y1);
     };
 }
 

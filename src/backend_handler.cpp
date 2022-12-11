@@ -23,6 +23,20 @@ BackendHandler::BackendHandler() {
     insertion_dispatcher_ = std::make_unique<Dispatcher>("BackendHandlerInsertionDispatcher", 1);
     optimization_dispatcher_ = std::make_unique<Dispatcher>("BackendHandlerOptimizationDispatcher", 1);
 
+    occupancygrid_ = std::make_shared<OccupancyGrid>();
+    occmap_width_ = configuration_.occmap_width_;
+    occmap_height_ = configuration_.occmap_height_;
+    occmap_bbox_[0] = - configuration_.occmap_resolution_ * static_cast<float>(occmap_width_ / 2.0);
+    occmap_bbox_[1] = configuration_.occmap_resolution_ * static_cast<float>(occmap_width_ / 2.0);
+    occmap_bbox_[2] = - configuration_.occmap_resolution_ * static_cast<float>(occmap_height_ / 2.0);
+    occmap_bbox_[3] = configuration_.occmap_resolution_ * static_cast<float>(occmap_height_ / 2.0);
+    occupancygrid_->width_ = occmap_width_;
+    occupancygrid_->height_ = occmap_height_;
+    occupancygrid_->resolution_ = configuration_.occmap_resolution_;
+    occupancygrid_->data_.resize(occmap_width_ * occmap_height_, -1);
+    occupancygrid_->initial_pose_ = EigIsometry3d::Identity();
+    occupancygrid_->initial_pose_.translation() = EigVector3d(occmap_bbox_[0], occmap_bbox_[2], 0);
+
     if(configuration_.verbose_) {
         msg << "[BackendHandler] Finished creating and configuring the back-end handler\n";
         std::cout << msg.str();
@@ -88,6 +102,20 @@ BackendHandler::BackendHandler(const Configuration &configuration) {
     insertion_dispatcher_ = std::make_unique<Dispatcher>("BackendHandlerInsertionDispatcher", 1);
     optimization_dispatcher_ = std::make_unique<Dispatcher>("BackendHandlerOptimizationDispatcher", 1);
 
+    occupancygrid_ = std::make_shared<OccupancyGrid>();
+    occmap_width_ = configuration_.occmap_width_;
+    occmap_height_ = configuration_.occmap_height_;
+    occmap_bbox_[0] = - configuration_.occmap_resolution_ * static_cast<float>(occmap_width_ / 2.0);
+    occmap_bbox_[1] = configuration_.occmap_resolution_ * static_cast<float>(occmap_width_ / 2.0);
+    occmap_bbox_[2] = - configuration_.occmap_resolution_ * static_cast<float>(occmap_height_ / 2.0);
+    occmap_bbox_[3] = configuration_.occmap_resolution_ * static_cast<float>(occmap_height_ / 2.0);
+    occupancygrid_->width_ = occmap_width_;
+    occupancygrid_->height_ = occmap_height_;
+    occupancygrid_->resolution_ = configuration_.occmap_resolution_;
+    occupancygrid_->data_.resize(occmap_width_ * occmap_height_, -1);
+    occupancygrid_->initial_pose_ = EigIsometry3d::Identity();
+    occupancygrid_->initial_pose_.translation() = EigVector3d(occmap_bbox_[0], occmap_bbox_[2], 0);
+
     if(configuration_.verbose_) {
         msg << "[BackendHandler] Finished creating and configuring the back-end handler\n";
         std::cout << msg.str();
@@ -111,7 +139,7 @@ void BackendHandler::remove_slam_output_observer(SlamOutputObserver *filtered_po
 // Notifies all the objects waiting for filtered point clouds
 void BackendHandler::notify_slam_output_observers(const pcl::PointCloud<Point3I>::Ptr& map, std::vector<EigIsometry3d> poses) {
     for(SlamOutputObserver* observer : slam_output_observers_) {
-        observer->update_slam_output_observer(map, poses);
+        observer->update_slam_output_observer(map, poses, occupancygrid_);
     }
 }
 
@@ -272,6 +300,15 @@ bool BackendHandler::flush_incoming_keyframes() {
         new_keyframes_.emplace_back(keyframe);
         num_keyframe_flushed_ = i;
         loop_detector_->make_scancontext(keyframe->pointcloud_);
+
+        for(int j = 0; j < keyframe->pointcloud_->size(); j++) {
+            const Point3I *p = &keyframe->pointcloud_->points[j];
+            if(p->z >= -0.05 && p->z <= 0.05) {
+                Point3I np(*p);
+                np.z = 0;
+                keyframe->pointcloud_2d_->emplace_back(np);
+            }
+        }
 
         EigIsometry3d odometry = transformation_odom2map * keyframe->odometry_;
         keyframe->graph_node_ = graph_handler_->add_se3_node(odometry);
@@ -640,34 +677,210 @@ void BackendHandler::prepare_data_for_visualization() {
     pcl::PointCloud<Point3I>::Ptr map(new pcl::PointCloud<Point3I>());
     std::vector<EigIsometry3d> poses;
 
+    // prepare the poses and find the bounding box of the trajectory
+    double min_x = 0, max_x = 0;
+    double min_y = 0, max_y = 0;
+    //std::cout << "BBOX: " << occmap_bbox_[0] << " " << occmap_bbox_[1] << " " << occmap_bbox_[2] << " " << occmap_bbox_[1] << std::endl;
     for(const KeyframeLaser3D::Ptr& keyframe : keyframes_) {
         EigIsometry3d pose = keyframe->graph_node_->estimate();
         poses.push_back(pose);
+
+        double x = pose.translation().x();
+        double y = pose.translation().y();
+        if(x > max_x) max_x = x;
+        else if(x < min_x) min_x = x;
+        if(y > max_y) max_y = y;
+        else if(y < min_y) min_y = y;
+    }
+
+    // check if occupancy map should be increased
+    bool is_occmap_enlarged_ = false;
+    if(min_x - 100 <= occmap_bbox_[0]) {
+        occmap_width_ += configuration_.occmap_width_ / 2;
+        occmap_bbox_[0] -= configuration_.occmap_resolution_ * static_cast<float>(configuration_.occmap_width_ / 2.0);
+        is_occmap_enlarged_ = true;
+    }
+
+    if(max_x + 100 >= occmap_bbox_[1]) {
+        occmap_width_ += configuration_.occmap_width_ / 2;
+        occmap_bbox_[1] += configuration_.occmap_resolution_ * static_cast<float>(configuration_.occmap_width_ / 2.0);
+        is_occmap_enlarged_ = true;
+    }
+
+    if(min_y - 100 <= occmap_bbox_[2]) {
+        occmap_height_ += configuration_.occmap_height_ / 2;
+        occmap_bbox_[2] -= configuration_.occmap_resolution_ * static_cast<float>(configuration_.occmap_height_ / 2.0);
+        is_occmap_enlarged_ = true;
+    }
+
+    if(max_y + 100 >= occmap_bbox_[3]) {
+        occmap_height_ += configuration_.occmap_height_ / 2;
+        occmap_bbox_[3] += configuration_.occmap_resolution_ * static_cast<float>(configuration_.occmap_height_ / 2.0);
+        is_occmap_enlarged_ = true;
+    }
+
+    // re compute the map in case of enlargement or pose graph update
+    if(update_occmap_ || is_occmap_enlarged_) {
+        occupancygrid_ = std::make_shared<OccupancyGrid>();
+        occupancygrid_->width_ = occmap_width_;
+        occupancygrid_->height_ = occmap_height_;
+        occupancygrid_->resolution_ = configuration_.occmap_resolution_;
+        occupancygrid_->data_.assign(occmap_width_ * occmap_height_, -1);
+        occupancygrid_->initial_pose_ = EigIsometry3d::Identity();
+        occupancygrid_->initial_pose_.translation() = EigVector3d(occmap_bbox_[0], occmap_bbox_[2], 0);
+
+        for(int i = 0; i < keyframes_.size() - configuration_.maximum_unoptimized_keyframes_; i++) {
+            EigIsometry3d pose = keyframes_[i]->graph_node_->estimate();
+            poses.push_back(pose);
+            EigMatrix4d posem = pose.matrix();
+            pcl::PointCloud<Point3I>::Ptr transformed_pointcloud(new pcl::PointCloud<Point3I>());
+            pcl::transformPointCloud(*(keyframes_[i]->pointcloud_2d_), *transformed_pointcloud, posem);
+
+            // ray tracing
+            EigVector2d origin = posem.block<2,1>(0,3);
+            int r_pos = static_cast<int>((origin.y() - occmap_bbox_[2]) / configuration_.occmap_resolution_);
+            int c_pos = static_cast<int>((origin.x() - occmap_bbox_[0]) / configuration_.occmap_resolution_);
+            double orig_pos_x = static_cast<float>(c_pos) * configuration_.occmap_resolution_ + occmap_bbox_[0] + configuration_.occmap_resolution_ / 2;
+            double orig_pos_y = static_cast<float>(r_pos) * configuration_.occmap_resolution_ + occmap_bbox_[2] + configuration_.occmap_resolution_ / 2;
+
+            for(int j = 0; j < transformed_pointcloud->size(); j++) {
+                EigVector2d pt(transformed_pointcloud->points[j].x, transformed_pointcloud->points[j].y);
+
+                if(pt.x() >= occmap_bbox_[1] || pt.x() <= occmap_bbox_[0] || pt.y() >= occmap_bbox_[3] || pt.y() <= occmap_bbox_[2])
+                    continue;
+
+                int r_pt = static_cast<int>((pt.y() - occmap_bbox_[2]) / configuration_.occmap_resolution_);
+                int c_pt = static_cast<int>((pt.x() - occmap_bbox_[0]) / configuration_.occmap_resolution_);
+                double orig_pt_x = static_cast<float>(c_pt) * configuration_.occmap_resolution_ + occmap_bbox_[0] + configuration_.occmap_resolution_ / 2;
+                double orig_pt_y = static_cast<float>(r_pt) * configuration_.occmap_resolution_ + occmap_bbox_[2] + configuration_.occmap_resolution_ / 2;
+
+                occupancygrid_->data_[occmap_width_ * r_pt + c_pt] = 100;
+                supercover_line(orig_pos_x, orig_pos_y, orig_pt_x, orig_pt_y);
+            }
+        }
+    }
+
+    for(int i = keyframes_.size() - 1 - configuration_.maximum_unoptimized_keyframes_; i < keyframes_.size(); i++) {
+        EigIsometry3d pose = keyframes_[i]->graph_node_->estimate();
+        EigMatrix4d posem = pose.matrix();
+        pcl::PointCloud<Point3I>::Ptr transformed_pointcloud(new pcl::PointCloud<Point3I>());
+        pcl::PointCloud<Point3I>::Ptr transformed_pointcloud3d(new pcl::PointCloud<Point3I>());
+        pcl::transformPointCloud(*(keyframes_[i]->pointcloud_2d_), *transformed_pointcloud, posem);
+        pcl::transformPointCloud(*(keyframes_[i]->pointcloud_), *transformed_pointcloud3d, posem);
+
+        // ray tracing
+        EigVector2d origin = posem.block<2, 1>(0, 3);
+        int r_pos = static_cast<int>((origin.y() - occmap_bbox_[2]) / configuration_.occmap_resolution_);
+        int c_pos = static_cast<int>((origin.x() - occmap_bbox_[0]) / configuration_.occmap_resolution_);
+        double orig_pos_x = static_cast<float>(c_pos) * configuration_.occmap_resolution_ + occmap_bbox_[0] + configuration_.occmap_resolution_ / 2;
+        double orig_pos_y = static_cast<float>(r_pos) * configuration_.occmap_resolution_ + occmap_bbox_[2] + configuration_.occmap_resolution_ / 2;
+
+        for (int j = 0; j < transformed_pointcloud->size(); j++) {
+            EigVector2d pt(transformed_pointcloud->points[j].x, transformed_pointcloud->points[j].y);
+
+            if(pt.x() >= occmap_bbox_[1] || pt.x() <= occmap_bbox_[0] || pt.y() >= occmap_bbox_[3] || pt.y() <= occmap_bbox_[2])
+                continue;
+
+            int r_pt = static_cast<int>((pt.y() - occmap_bbox_[2]) / configuration_.occmap_resolution_);
+            int c_pt = static_cast<int>((pt.x() - occmap_bbox_[0]) / configuration_.occmap_resolution_);
+            double orig_pt_x = static_cast<float>(c_pt) * configuration_.occmap_resolution_ + occmap_bbox_[0] + configuration_.occmap_resolution_ / 2;
+            double orig_pt_y = static_cast<float>(r_pt) * configuration_.occmap_resolution_ + occmap_bbox_[2] + configuration_.occmap_resolution_ / 2;
+
+            occupancygrid_->data_[occmap_width_ * r_pt + c_pt] = 100;
+            supercover_line(orig_pos_x, orig_pos_y, orig_pt_x, orig_pt_y);
+        }
+
+        // point cloud map
+        *map += *transformed_pointcloud;
     }
 
     /*for(const KeyframeLaser3D::Ptr& keyframe : keyframes_) {
         EigIsometry3d pose = keyframe->graph_node_->estimate();
-        poses.push_back(pose);
         EigMatrix4d posem = pose.matrix();
         pcl::PointCloud<Point3I>::Ptr transformed_pointcloud(new pcl::PointCloud<Point3I>());
-        pcl::transformPointCloud(*(keyframe->pointcloud_), *transformed_pointcloud, posem);
-        *map += *transformed_pointcloud;
-    }
+        pcl::PointCloud<Point3I>::Ptr transformed_pointcloud3d(new pcl::PointCloud<Point3I>());
+        pcl::transformPointCloud(*(keyframe->pointcloud_2d_), *transformed_pointcloud, posem);
+        pcl::transformPointCloud(*(keyframe->pointcloud_), *transformed_pointcloud3d, posem);
 
-    if(!poses.empty() && !map->empty()) {
+        // ray tracing
+        EigVector2d origin = posem.block<2,1>(0,3);
+        int r_pos = (origin.y() + 125) / 0.25;
+        int c_pos = (origin.x() + 125) / 0.25;
+        double orig_pos_x = c_pos * 0.25 - 125 + 0.25/2;
+        double orig_pos_y = r_pos * 0.25 - 125 + 0.25/2;
+        for(int i = 0; i < transformed_pointcloud->size(); i++) {
+            EigVector2d pt(transformed_pointcloud->points[i].x, transformed_pointcloud->points[i].y);
+
+            //if(pt.x() > 80 || pt.x() < -80 || pt.y() > 80 || pt.y() < -80)
+                //continue;
+
+            int r_pt = (pt.y() + 125) / 0.25;
+            int c_pt = (pt.x() + 125) / 0.25;
+            double orig_pt_x = c_pt * 0.25 - 125 + 0.25/2;
+            double orig_pt_y = r_pt * 0.25 - 125 + 0.25/2;
+
+            occupancygrid_.data_[1000 * r_pt + c_pt] = 100;
+            supercover_line(orig_pos_x, orig_pos_y, orig_pt_x, orig_pt_y);
+        }
+
+        // point cloud map
+        *map += *transformed_pointcloud;
+    }*/
+
+    //std::cout << "BACKEND: " << occmap_width_ << " " << occmap_height_ << std::endl;
+    notify_slam_output_observers(map, poses);
+
+    /*if(!poses.empty() && !map->empty()) {
         pcl::VoxelGrid<Point3I> filter;
-        filter.setLeafSize(0.4, 0.4, 0.4);
+        filter.setLeafSize(0., 0.4, 0.4);
         filter.setInputCloud(map);
         filter.filter(*map);
         notify_slam_output_observers(map, poses);
     }*/
 
-    if(!keyframes_.empty()) {
+    /*if(!keyframes_.empty()) {
         EigIsometry3d pose = keyframes_.back()->graph_node_->estimate();
         EigMatrix4d posem = pose.matrix();
         pcl::PointCloud<Point3I>::Ptr transformed_pointcloud(new pcl::PointCloud<Point3I>());
         pcl::transformPointCloud(*(keyframes_.back()->pointcloud_), *transformed_pointcloud, posem);
         *map += *transformed_pointcloud;
         notify_slam_output_observers(map, poses);
+    }*/
+}
+
+void BackendHandler::supercover_line(double x0, double y0, double x1, double y1) {
+    double dx = x1 - x0;
+    double dy = y1 - y0;
+
+    double nx = abs(dx);
+    double ny = abs(dy);
+
+    double step_x = dx > 0 ? configuration_.occmap_resolution_ : -configuration_.occmap_resolution_;
+    double step_y = dy > 0 ? configuration_.occmap_resolution_ : -configuration_.occmap_resolution_;
+
+    double ix = 0, iy = 0;
+
+    while(ix < nx || iy < ny) {
+        double dec = (1 + (2 / configuration_.occmap_resolution_) * ix) * ny - (1 + (2 / configuration_.occmap_resolution_) * iy) * nx;
+        if(dec == 0) {
+            // next step is diagonal
+            x0 += step_x;
+            y0 += step_y;
+            ix += configuration_.occmap_resolution_;
+            iy += configuration_.occmap_resolution_;
+        } else if(dec < 0) {
+            // next step is horizontal
+            x0 += step_x;
+            ix += configuration_.occmap_resolution_;
+        } else {
+            // next step is vertical
+            y0 += step_y;
+            iy += configuration_.occmap_resolution_;
+        }
+
+        int r_pt = (y0 - occmap_bbox_[2]) / configuration_.occmap_resolution_;
+        int c_pt = (x0 - occmap_bbox_[0]) / configuration_.occmap_resolution_;
+        if(occupancygrid_->data_[occmap_width_ * r_pt + c_pt] == 100) break;
+        occupancygrid_->data_[occmap_width_ * r_pt + c_pt] = 0;
     }
 }

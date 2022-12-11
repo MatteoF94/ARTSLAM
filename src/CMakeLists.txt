@@ -1,4 +1,4 @@
-add_library(artslam_laser_3d SHARED
+add_library(artslam_lib SHARED
         configuration_parser.cpp
         configuration_parser.h
         prefilterer.cpp
@@ -13,7 +13,7 @@ add_library(artslam_laser_3d SHARED
         scancontext/scancontext.cpp
         backend_handler.cpp)
 
-target_link_libraries(artslam_laser_3d
+target_link_libraries(artslam_lib
         ${catkin_LIBRARIES}
         ${PCL_LIBRARIES}
         ${Boost_LIBRARIES}

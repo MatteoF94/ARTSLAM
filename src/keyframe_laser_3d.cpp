@@ -5,6 +5,7 @@ using namespace artslam::laser3d;
 KeyframeLaser3D::KeyframeLaser3D(uint64_t timestamp, double accumulated_distance, double reliability, const EigIsometry3d& odometry, const pcl::PointCloud<Point3I>::ConstPtr& pointcloud) : Keyframe(timestamp, accumulated_distance, reliability) {
     odometry_ = odometry;
     pointcloud_ = pointcloud;
+    pointcloud_2d_ = pcl::PointCloud<Point3I>::Ptr(new pcl::PointCloud<Point3I>());
     graph_node_ = nullptr;
 }
 
